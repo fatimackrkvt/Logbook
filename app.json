@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Logbook",
+    "slug": "logbook",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#111827"
+    },
+    "android": {
+      "package": "com.yourname.logbook",
+      "adaptiveIcon": {
+        "backgroundColor": "#111827"
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.logbook"
+    }
+  }
+}
