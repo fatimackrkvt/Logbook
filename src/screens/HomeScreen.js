@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, SectionList, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTodos } from '../context/TodoContext';
 import { isDueOn, todayStr, TYPE_LABELS } from '../utils/recurrence';
@@ -68,17 +68,22 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111827', paddingHorizontal: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#111827',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
+  },
   header: {
-    marginTop: 12,
+    marginTop: 24,
     marginBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   heading: { color: '#fff', fontSize: 28, fontWeight: '800' },
   date: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
-  overviewBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, marginTop: 4 },
+  overviewBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
   overviewBtnText: { color: '#818CF8', fontWeight: '600', fontSize: 13 },
   sectionHeader: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   empty: { color: '#9CA3AF', textAlign: 'center', marginTop: 60, fontSize: 14 },
