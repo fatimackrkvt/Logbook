@@ -1,39 +1,59 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTodos } from '../context/TodoContext';
-import { isDueOn, todayStr } from '../utils/recurrence';
+import { isDueOn, todayStr, TYPE_LABELS } from '../utils/recurrence';
 import TodoItem from '../components/TodoItem';
 import AddTodoModal from '../components/AddTodoModal';
+import OverviewScreen from './OverviewScreen';
 
 export default function HomeScreen() {
   const { todos, loaded } = useTodos();
   const [modalVisible, setModalVisible] = useState(false);
+  const [overviewVisible, setOverviewVisible] = useState(false);
   const today = todayStr();
 
-  const todaysTodos = useMemo(
-    () => todos.filter((t) => isDueOn(t, today)),
-    [todos, today]
-  );
+  const sections = useMemo(() => {
+    const todaysTodos = todos.filter((t) => isDueOn(t, today));
+    const groups = {};
+    todaysTodos.forEach((t) => {
+      const label = TYPE_LABELS[t.type] || t.type;
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(t);
+    });
+    const order = Object.values(TYPE_LABELS);
+    return order
+      .filter((label) => groups[label])
+      .map((label) => ({ title: label, data: groups[label] }));
+  }, [todos, today]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <Text style={styles.heading}>Today</Text>
-        <Text style={styles.date}>{today}</Text>
+        <View>
+          <Text style={styles.heading}>Today</Text>
+          <Text style={styles.date}>{today}</Text>
+        </View>
+        <TouchableOpacity style={styles.overviewBtn} onPress={() => setOverviewVisible(true)}>
+          <Text style={styles.overviewBtnText}>📊 Log</Text>
+        </TouchableOpacity>
       </View>
 
       {!loaded ? (
         <Text style={styles.empty}>Loading…</Text>
-      ) : todaysTodos.length === 0 ? (
+      ) : sections.length === 0 ? (
         <Text style={styles.empty}>Nothing on the agenda today. Add something below.</Text>
       ) : (
-        <FlatList
-          data={todaysTodos}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <TodoItem todo={item} />}
+          renderSectionHeader={({ section: { title } }) => (
+            <Text style={styles.sectionHeader}>{title}</Text>
+          )}
           contentContainerStyle={{ paddingBottom: 100 }}
+          stickySectionHeadersEnabled={false}
         />
       )}
 
@@ -42,15 +62,25 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       <AddTodoModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      <OverviewScreen visible={overviewVisible} onClose={() => setOverviewVisible(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111827', paddingHorizontal: 16 },
-  header: { marginTop: 12, marginBottom: 16 },
+  header: {
+    marginTop: 12,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   heading: { color: '#fff', fontSize: 28, fontWeight: '800' },
   date: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
+  overviewBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, marginTop: 4 },
+  overviewBtnText: { color: '#818CF8', fontWeight: '600', fontSize: 13 },
+  sectionHeader: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   empty: { color: '#9CA3AF', textAlign: 'center', marginTop: 60, fontSize: 14 },
   fab: {
     position: 'absolute',

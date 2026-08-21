@@ -60,4 +60,35 @@ export function frequencyProgress(todo, dateStr) {
   return { done: count, target: todo.frequencyCount, periodStart };
 }
 
+export function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return todayStr(d);
+}
+
+// 7 dates (Mon..Sun) for the week containing dateStr
+export function datesInWeek(dateStr) {
+  const start = weekStart(dateStr);
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
+// All dates in the month containing dateStr, plus leading/trailing blanks (null)
+// so the list divides evenly into calendar rows of 7 (Mon-start).
+export function datesInMonth(dateStr) {
+  const [y, m] = dateStr.split('-').map(Number);
+  const first = `${y}-${String(m).padStart(2, '0')}-01`;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const dates = Array.from({ length: daysInMonth }, (_, i) => addDays(first, i));
+  const leadingBlanks = (dayOfWeek(first) + 6) % 7; // Mon=0..Sun=6
+  return [...Array(leadingBlanks).fill(null), ...dates];
+}
+
+export const TYPE_LABELS = {
+  once: 'One-time',
+  daily: 'Daily',
+  weekly: 'Weekly',
+  interval: 'Every N days',
+  frequency: 'X times per week/month',
+};
+
 export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
