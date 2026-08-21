@@ -35,10 +35,10 @@ export default function HomeScreen() {
           <Text style={styles.heading}>Today</Text>
           <Text style={styles.date}>{today}</Text>
         </View>
-        <TouchableOpacity style={styles.overviewBtn} onPress={() => setOverviewVisible(true)}>
-          <Text style={styles.overviewBtnText}>📊 Log</Text>
-        </TouchableOpacity>
       </View>
+      <TouchableOpacity style={styles.overviewBtn} onPress={() => setOverviewVisible(true)}>
+        <Text style={styles.overviewBtnText}>📊 Log</Text>
+      </TouchableOpacity>
 
       {!loaded ? (
         <Text style={styles.empty}>Loading…</Text>
@@ -76,14 +76,11 @@ const styles = StyleSheet.create({
   },
   header: {
     marginTop: 24,
-    marginBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 4,
   },
   heading: { color: '#fff', fontSize: 28, fontWeight: '800' },
   date: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
-  overviewBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
+  overviewBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, alignSelf: 'flex-start', marginBottom: 16 },
   overviewBtnText: { color: '#818CF8', fontWeight: '600', fontSize: 13 },
   sectionHeader: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   empty: { color: '#9CA3AF', textAlign: 'center', marginTop: 60, fontSize: 14 },

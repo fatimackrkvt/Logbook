@@ -74,7 +74,7 @@ export default function OverviewScreen({ visible, onClose }) {
               todos={todos}
               onPrev={() => shift(-7)}
               onNext={() => shift(7)}
-              onPickDay={(date) => { setAnchorDate(date); setTab('day'); }}
+              onEdit={(todoId, date) => setEditing({ todoId, date })}
             />
           )}
           {tab === 'month' && (
@@ -83,7 +83,7 @@ export default function OverviewScreen({ visible, onClose }) {
               todos={todos}
               onPrev={() => shiftMonth(-1)}
               onNext={() => shiftMonth(1)}
-              onPickDay={(date) => { setAnchorDate(date); setTab('day'); }}
+              onEdit={(todoId, date) => setEditing({ todoId, date })}
             />
           )}
         </View>
@@ -143,58 +143,155 @@ function DayTab({ date, todos, onPrev, onNext, onToday, onEdit }) {
   );
 }
 
-function WeekTab({ date, todos, onPrev, onNext, onPickDay }) {
+function DayAccordion({ date, todos, expanded, onToggle, onEdit }) {
+  const entries = useMemo(() => dailyEntries(todos, date), [todos, date]);
+  const groups = useMemo(() => byCategory(entries), [entries]);
+  const counts = useMemo(() => summariesForDates(todos, [date])[0], [todos, date]);
+
+  return (
+    <View style={styles.accordionItem}>
+      <TouchableOpacity style={styles.accordionHeader} onPress={onToggle}>
+        <Text style={styles.accordionTitle}>{date}</Text>
+        <View style={styles.weekCounts}>
+          <Text style={[styles.countText, { color: STATUS_META.done.color }]}>{counts.done}✓</Text>
+          <Text style={[styles.countText, { color: STATUS_META.missed.color }]}>{counts.missed}✕</Text>
+          <Text style={[styles.countText, { color: STATUS_META.skipped.color }]}>{counts.skipped}–</Text>
+        </View>
+        <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.accordionBody}>
+          {entries.length === 0 ? (
+            <Text style={styles.emptySmall}>Nothing logged or scheduled.</Text>
+          ) : (
+            groups.map(([label, items]) => (
+              <View key={label} style={{ marginBottom: 10 }}>
+                <Text style={styles.catHeader}>{label}</Text>
+                {items.map((e) => (
+                  <TouchableOpacity key={e.todo.id} style={styles.entryRow} onPress={() => onEdit(e.todo.id, date)}>
+                    <View style={[styles.badge, { borderColor: e.status ? STATUS_META[e.status].color : '#4B5563' }]}>
+                      <Text style={{ color: e.status ? STATUS_META[e.status].color : '#4B5563', fontWeight: '700' }}>
+                        {e.status ? STATUS_META[e.status].symbol : '?'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.entryTitle}>{e.todo.title}</Text>
+                      {e.note ? <Text style={styles.entryNote}>{e.note}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function WeekTab({ date, todos, onPrev, onNext, onEdit }) {
   const dates = useMemo(() => datesInWeek(date), [date]);
-  const summaries = useMemo(() => summariesForDates(todos, dates), [todos, dates]);
   const label = `Week of ${weekStart(date)}`;
+  const [expandedDays, setExpandedDays] = useState(() => new Set([todayStr()]));
+
+  function toggleDay(d) {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      next.has(d) ? next.delete(d) : next.add(d);
+      return next;
+    });
+  }
 
   return (
     <View style={{ flex: 1 }}>
       <NavRow label={label} onPrev={onPrev} onNext={onNext} />
       <ScrollView style={{ marginTop: 8 }}>
-        {summaries.map((s) => (
-          <TouchableOpacity key={s.date} style={styles.weekRow} onPress={() => onPickDay(s.date)}>
-            <Text style={styles.weekDate}>{s.date}</Text>
-            <View style={styles.weekCounts}>
-              <Text style={[styles.countText, { color: STATUS_META.done.color }]}>{s.done}✓</Text>
-              <Text style={[styles.countText, { color: STATUS_META.missed.color }]}>{s.missed}✕</Text>
-              <Text style={[styles.countText, { color: STATUS_META.skipped.color }]}>{s.skipped}–</Text>
-            </View>
-          </TouchableOpacity>
+        {dates.map((d) => (
+          <DayAccordion
+            key={d}
+            date={d}
+            todos={todos}
+            expanded={expandedDays.has(d)}
+            onToggle={() => toggleDay(d)}
+            onEdit={onEdit}
+          />
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function MonthTab({ date, todos, onPrev, onNext, onPickDay }) {
+function MonthTab({ date, todos, onPrev, onNext, onEdit }) {
   const dates = useMemo(() => datesInMonth(date), [date]);
-  const summaries = useMemo(() => summariesForDates(todos, dates), [todos, dates]);
   const label = monthStart(date).slice(0, 7);
+  const [expandedWeeks, setExpandedWeeks] = useState(new Set());
+  const [expandedDays, setExpandedDays] = useState(() => new Set([todayStr()]));
 
-  // chunk into rows of 7 for a calendar grid
-  const rows = [];
-  for (let i = 0; i < summaries.length; i += 7) rows.push(summaries.slice(i, i + 7));
+  const weeks = useMemo(() => {
+    const rows = [];
+    for (let i = 0; i < dates.length; i += 7) rows.push(dates.slice(i, i + 7).filter(Boolean));
+    return rows.filter((w) => w.length > 0);
+  }, [dates]);
+
+  function toggleWeek(idx) {
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  }
+
+  function toggleDay(d) {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      next.has(d) ? next.delete(d) : next.add(d);
+      return next;
+    });
+  }
 
   return (
     <View style={{ flex: 1 }}>
       <NavRow label={label} onPrev={onPrev} onNext={onNext} />
       <ScrollView style={{ marginTop: 8 }}>
-        {rows.map((row, i) => (
-          <View key={i} style={styles.calRow}>
-            {row.map((s, j) => {
-              if (!s) return <View key={j} style={styles.calCell} />;
-              const ratio = s.total > 0 ? s.done / s.total : 0;
-              const bg = s.total === 0 ? '#1F2937' : ratio >= 0.66 ? '#166534' : ratio >= 0.33 ? '#854D0E' : '#7F1D1D';
-              return (
-                <TouchableOpacity key={j} style={[styles.calCell, { backgroundColor: bg }]} onPress={() => onPickDay(s.date)}>
-                  <Text style={styles.calDayNum}>{s.date.slice(-2)}</Text>
-                  {s.total > 0 && <Text style={styles.calCount}>{s.done}/{s.total}</Text>}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
+        {weeks.map((weekDates, idx) => {
+          const summaries = summariesForDates(todos, weekDates);
+          const totals = summaries.reduce(
+            (acc, s) => ({ done: acc.done + s.done, missed: acc.missed + s.missed, skipped: acc.skipped + s.skipped }),
+            { done: 0, missed: 0, skipped: 0 }
+          );
+          const weekLabel = weekDates.length > 1 ? `${weekDates[0]} – ${weekDates[weekDates.length - 1]}` : weekDates[0];
+          const expanded = expandedWeeks.has(idx);
+
+          return (
+            <View key={idx} style={styles.accordionItem}>
+              <TouchableOpacity style={styles.accordionHeader} onPress={() => toggleWeek(idx)}>
+                <Text style={styles.accordionTitle}>{weekLabel}</Text>
+                <View style={styles.weekCounts}>
+                  <Text style={[styles.countText, { color: STATUS_META.done.color }]}>{totals.done}✓</Text>
+                  <Text style={[styles.countText, { color: STATUS_META.missed.color }]}>{totals.missed}✕</Text>
+                  <Text style={[styles.countText, { color: STATUS_META.skipped.color }]}>{totals.skipped}–</Text>
+                </View>
+                <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+              </TouchableOpacity>
+
+              {expanded && (
+                <View style={styles.weekBody}>
+                  {weekDates.map((d) => (
+                    <DayAccordion
+                      key={d}
+                      date={d}
+                      todos={todos}
+                      expanded={expandedDays.has(d)}
+                      onToggle={() => toggleDay(d)}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -232,12 +329,21 @@ const styles = StyleSheet.create({
   badge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 1 },
   entryTitle: { color: '#E5E7EB', fontSize: 14, fontWeight: '600' },
   entryNote: { color: '#9CA3AF', fontSize: 12, marginTop: 2 },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomColor: '#1F2937', borderBottomWidth: 1 },
-  weekDate: { color: '#E5E7EB', fontSize: 14, fontWeight: '600' },
-  weekCounts: { flexDirection: 'row', gap: 10 },
-  countText: { fontSize: 13, fontWeight: '700' },
-  calRow: { flexDirection: 'row', gap: 4, marginBottom: 4 },
-  calCell: { flex: 1, aspectRatio: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  calDayNum: { color: '#E5E7EB', fontSize: 11, fontWeight: '700' },
-  calCount: { color: '#D1D5DB', fontSize: 9, marginTop: 1 },
+  weekCounts: { flexDirection: 'row', gap: 8 },
+  countText: { fontSize: 12, fontWeight: '700' },
+  accordionItem: { marginBottom: 6 },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1F2937',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  accordionTitle: { color: '#E5E7EB', fontSize: 13, fontWeight: '700', flex: 1 },
+  chevron: { color: '#9CA3AF', fontSize: 14, marginLeft: 4 },
+  accordionBody: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 },
+  weekBody: { paddingLeft: 10, paddingTop: 6 },
+  emptySmall: { color: '#6B7280', fontSize: 12, paddingVertical: 6 },
 });
