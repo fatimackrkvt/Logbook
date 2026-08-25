@@ -1,4 +1,7 @@
-# Todo App (Expo / React Native)
+# Logbook (Expo / React Native)
+
+A personal to-do + habit + log tracker. Started with the to-do list; built to grow into
+other tracked things (reading log, phone usage, etc.) without a rename.
 
 ## Run it
 

@@ -7,7 +7,7 @@ import TodoItem from '../components/TodoItem';
 import AddTodoModal from '../components/AddTodoModal';
 import OverviewScreen from './OverviewScreen';
 
-export default function HomeScreen() {
+export default function HomeScreen({ onBack }) {
   const { todos, loaded } = useTodos();
   const [modalVisible, setModalVisible] = useState(false);
   const [overviewVisible, setOverviewVisible] = useState(false);
@@ -31,10 +31,11 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.heading}>Today</Text>
-          <Text style={styles.date}>{today}</Text>
-        </View>
+        <TouchableOpacity onPress={onBack}>
+          <Text style={styles.backLink}>‹ Dashboard</Text>
+        </TouchableOpacity>
+        <Text style={styles.heading}>Today</Text>
+        <Text style={styles.date}>{today}</Text>
       </View>
       <TouchableOpacity style={styles.overviewBtn} onPress={() => setOverviewVisible(true)}>
         <Text style={styles.overviewBtnText}>📊 Log</Text>
@@ -78,6 +79,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 4,
   },
+  backLink: { color: '#818CF8', fontSize: 14, fontWeight: '600', marginBottom: 8 },
   heading: { color: '#fff', fontSize: 28, fontWeight: '800' },
   date: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
   overviewBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, alignSelf: 'flex-start', marginBottom: 16 },
