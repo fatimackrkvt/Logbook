@@ -5,6 +5,18 @@ import { loadPhoneUsage, savePhoneUsage } from '../utils/phoneUsageStorage';
 
 const PhoneUsageContext = createContext(null);
 
+// category shape: { id, name, archived, subcategories: [{id, name, archived}] }
+// entry shape: {
+//   id,
+//   mode: 'daily' | 'weekly',
+//   date: 'YYYY-MM-DD' (set when mode === 'daily'),
+//   weekStart: 'YYYY-MM-DD' (Monday, set when mode === 'weekly'),
+//   categoryId,
+//   breakdown: [{ subcategoryId, minutes }] | null,  // null = plain total, no breakdown
+//   minutes: total minutes (always present — either typed directly, or the sum of breakdown)
+//   note,
+// }
+
 export function PhoneUsageProvider({ children }) {
   const [categories, setCategories] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -22,8 +34,6 @@ export function PhoneUsageProvider({ children }) {
     if (loaded) savePhoneUsage({ categories, entries });
   }, [categories, entries, loaded]);
 
-  // Returns the category (existing or newly created) matching this name,
-  // case-insensitively, un-archiving it if it had been archived.
   const getOrCreateCategory = useCallback((name) => {
     const trimmed = name.trim();
     if (!trimmed) return null;
@@ -37,10 +47,34 @@ export function PhoneUsageProvider({ children }) {
         }
         return prev;
       }
-      const newCat = { id: uuidv4(), name: trimmed, archived: false };
+      const newCat = { id: uuidv4(), name: trimmed, archived: false, subcategories: [] };
       match = newCat;
       return [...prev, newCat];
     });
+    return match;
+  }, []);
+
+  const getOrCreateSubcategory = useCallback((categoryId, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    let match = null;
+    setCategories((prev) =>
+      prev.map((c) => {
+        if (c.id !== categoryId) return c;
+        const subs = c.subcategories || [];
+        const existing = subs.find((s) => s.name.toLowerCase() === trimmed.toLowerCase());
+        if (existing) {
+          match = existing;
+          if (existing.archived) {
+            return { ...c, subcategories: subs.map((s) => (s.id === existing.id ? { ...s, archived: false } : s)) };
+          }
+          return c;
+        }
+        const newSub = { id: uuidv4(), name: trimmed, archived: false };
+        match = newSub;
+        return { ...c, subcategories: [...subs, newSub] };
+      })
+    );
     return match;
   }, []);
 
@@ -52,20 +86,39 @@ export function PhoneUsageProvider({ children }) {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, archived: false } : c)));
   }, []);
 
-  // input: { date, categoryId, minutes, note }
+  const archiveSubcategory = useCallback((categoryId, subId) => {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id !== categoryId
+          ? c
+          : { ...c, subcategories: (c.subcategories || []).map((s) => (s.id === subId ? { ...s, archived: true } : s)) }
+      )
+    );
+  }, []);
+
+  const unarchiveSubcategory = useCallback((categoryId, subId) => {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id !== categoryId
+          ? c
+          : { ...c, subcategories: (c.subcategories || []).map((s) => (s.id === subId ? { ...s, archived: false } : s)) }
+      )
+    );
+  }, []);
+
+  // input: { mode, date?, weekStart?, categoryId, breakdown?, minutes, note }
   const addEntry = useCallback((input) => {
     const entry = {
       id: uuidv4(),
-      date: input.date,
+      mode: input.mode,
+      date: input.mode === 'daily' ? input.date : null,
+      weekStart: input.mode === 'weekly' ? input.weekStart : null,
       categoryId: input.categoryId,
+      breakdown: input.breakdown && input.breakdown.length > 0 ? input.breakdown : null,
       minutes: input.minutes,
       note: input.note || '',
     };
     setEntries((prev) => [...prev, entry]);
-  }, []);
-
-  const updateEntry = useCallback((id, patch) => {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   }, []);
 
   const deleteEntry = useCallback((id) => {
@@ -79,10 +132,12 @@ export function PhoneUsageProvider({ children }) {
         entries,
         loaded,
         getOrCreateCategory,
+        getOrCreateSubcategory,
         archiveCategory,
         unarchiveCategory,
+        archiveSubcategory,
+        unarchiveSubcategory,
         addEntry,
-        updateEntry,
         deleteEntry,
       }}
     >

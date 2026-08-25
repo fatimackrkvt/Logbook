@@ -1,44 +1,28 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, SectionList, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { usePhoneUsage } from '../context/PhoneUsageContext';
+import { weeklySummaries, formatDuration } from '../utils/phoneUsageAggregate';
 import AddUsageEntryModal from '../components/AddUsageEntryModal';
 import ManageCategoriesModal from '../components/ManageCategoriesModal';
-
-function formatDuration(mins) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
 
 export default function PhoneUsageScreen({ onBack }) {
   const { categories, entries, loaded, deleteEntry } = usePhoneUsage();
   const [addVisible, setAddVisible] = useState(false);
   const [manageVisible, setManageVisible] = useState(false);
+  const [expandedWeek, setExpandedWeek] = useState(null);
 
-  const categoryName = (id) => categories.find((c) => c.id === id)?.name || 'Unknown';
+  const subcategoryName = (categoryId, subId) => {
+    const cat = categories.find((c) => c.id === categoryId);
+    return cat?.subcategories?.find((s) => s.id === subId)?.name || 'Unknown';
+  };
 
-  const sections = useMemo(() => {
-    const byDate = {};
-    entries.forEach((e) => {
-      if (!byDate[e.date]) byDate[e.date] = [];
-      byDate[e.date].push(e);
-    });
-    return Object.entries(byDate)
-      .sort(([a], [b]) => (a < b ? 1 : -1)) // newest date first
-      .map(([date, data]) => ({
-        title: date,
-        totalLabel: formatDuration(data.reduce((sum, e) => sum + e.minutes, 0)),
-        data: data.sort((a, b) => b.minutes - a.minutes),
-      }));
-  }, [entries]);
+  const weeks = useMemo(() => weeklySummaries(entries, categories), [entries, categories]);
 
-  function handleDelete(entry) {
+  function handleDelete(entry, categoryName) {
     Alert.alert(
       'Delete this entry?',
-      `${categoryName(entry.categoryId)} · ${formatDuration(entry.minutes)} on ${entry.date}`,
+      `${categoryName} · ${formatDuration(entry.minutes)}`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => deleteEntry(entry.id) },
@@ -64,32 +48,68 @@ export default function PhoneUsageScreen({ onBack }) {
 
       {!loaded ? (
         <Text style={styles.empty}>Loading…</Text>
-      ) : sections.length === 0 ? (
+      ) : weeks.length === 0 ? (
         <Text style={styles.empty}>No usage logged yet. Tap + to add your first entry.</Text>
       ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              <Text style={styles.sectionTotal}>{section.totalLabel}</Text>
-            </View>
-          )}
-          renderItem={({ item }) => (
-            <View style={styles.entryRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.entryCategory}>{categoryName(item.categoryId)}</Text>
-                <Text style={styles.entryDuration}>{formatDuration(item.minutes)}</Text>
-                {item.note ? <Text style={styles.entryNote}>{item.note}</Text> : null}
+        <ScrollView style={{ marginTop: 8 }} contentContainerStyle={{ paddingBottom: 100 }}>
+          {weeks.map((w) => {
+            const expanded = expandedWeek === w.weekStart;
+            return (
+              <View key={w.weekStart} style={styles.weekBlock}>
+                <TouchableOpacity style={styles.weekHeader} onPress={() => setExpandedWeek(expanded ? null : w.weekStart)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.weekTitle}>Week of {w.weekStart}</Text>
+                    <Text style={styles.weekSubtitle}>
+                      {w.byCategory.slice(0, 3).map((c) => `${c.name} ${formatDuration(c.minutes)}`).join(' · ')}
+                      {w.byCategory.length > 3 ? '…' : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.weekTotal}>{formatDuration(w.totalMinutes)}</Text>
+                  <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+                </TouchableOpacity>
+
+                {expanded && (
+                  <View style={styles.weekBody}>
+                    <Text style={styles.detailLabel}>By category</Text>
+                    {w.byCategory.map((c) => (
+                      <View key={c.categoryId} style={styles.catRow}>
+                        <Text style={styles.catRowName}>{c.name}</Text>
+                        <Text style={styles.catRowMinutes}>{formatDuration(c.minutes)}</Text>
+                      </View>
+                    ))}
+
+                    <Text style={[styles.detailLabel, { marginTop: 14 }]}>Entries</Text>
+                    {w.entries.map((e) => {
+                      const catName = categories.find((c) => c.id === e.categoryId)?.name || 'Unknown';
+                      return (
+                        <View key={e.id} style={styles.entryRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.entryTitle}>
+                              {catName}
+                              {e.mode === 'daily' ? `  ·  ${e.date}` : '  ·  week total'}
+                            </Text>
+                            {e.breakdown && (
+                              <Text style={styles.entryBreakdown}>
+                                {e.breakdown
+                                  .map((b) => `${subcategoryName(e.categoryId, b.subcategoryId)} ${formatDuration(b.minutes)}`)
+                                  .join(', ')}
+                              </Text>
+                            )}
+                            {e.note ? <Text style={styles.entryNote}>{e.note}</Text> : null}
+                          </View>
+                          <Text style={styles.entryMinutes}>{formatDuration(e.minutes)}</Text>
+                          <TouchableOpacity onPress={() => handleDelete(e, catName)} style={styles.deleteBtn}>
+                            <Text style={styles.deleteText}>🗑</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
-              <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-                <Text style={styles.deleteText}>🗑</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          contentContainerStyle={{ paddingBottom: 100 }}
-        />
+            );
+          })}
+        </ScrollView>
       )}
 
       <TouchableOpacity style={styles.fab} onPress={() => setAddVisible(true)}>
@@ -123,15 +143,24 @@ const styles = StyleSheet.create({
   actionBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
   actionBtnText: { color: '#818CF8', fontWeight: '600', fontSize: 13 },
   empty: { color: '#9CA3AF', textAlign: 'center', marginTop: 60, fontSize: 14 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 6 },
-  sectionTitle: { color: '#9CA3AF', fontSize: 13, fontWeight: '700' },
-  sectionTotal: { color: '#818CF8', fontSize: 13, fontWeight: '700' },
-  entryRow: { backgroundColor: '#1F2937', borderRadius: 12, padding: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center' },
-  deleteBtn: { padding: 6, marginLeft: 8 },
-  deleteText: { fontSize: 16 },
-  entryCategory: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  entryDuration: { color: '#22C55E', fontSize: 13, fontWeight: '700', marginTop: 2 },
-  entryNote: { color: '#9CA3AF', fontSize: 12, marginTop: 4, fontStyle: 'italic' },
+  weekBlock: { marginBottom: 8 },
+  weekHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1F2937', borderRadius: 12, padding: 14, gap: 8 },
+  weekTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  weekSubtitle: { color: '#9CA3AF', fontSize: 12, marginTop: 3 },
+  weekTotal: { color: '#22C55E', fontSize: 14, fontWeight: '700' },
+  chevron: { color: '#9CA3AF', fontSize: 14 },
+  weekBody: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+  detailLabel: { color: '#9CA3AF', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  catRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  catRowName: { color: '#D1D5DB', fontSize: 13 },
+  catRowMinutes: { color: '#818CF8', fontSize: 13, fontWeight: '600' },
+  entryRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 8, borderTopColor: '#374151', borderTopWidth: 1 },
+  entryTitle: { color: '#E5E7EB', fontSize: 13, fontWeight: '600' },
+  entryBreakdown: { color: '#9CA3AF', fontSize: 12, marginTop: 2 },
+  entryNote: { color: '#6B7280', fontSize: 12, marginTop: 2, fontStyle: 'italic' },
+  entryMinutes: { color: '#22C55E', fontSize: 13, fontWeight: '600', marginLeft: 8 },
+  deleteBtn: { padding: 4, marginLeft: 8 },
+  deleteText: { fontSize: 14 },
   fab: {
     position: 'absolute',
     right: 20,
