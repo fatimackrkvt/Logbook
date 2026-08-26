@@ -6,6 +6,7 @@ import { useTrackers } from '../context/TrackerContext';
 const FEATURES = [
   { key: 'todos', icon: '✅', title: 'To-Do List', subtitle: 'Daily tasks, habits & one-offs' },
   { key: 'phoneUsage', icon: '📱', title: 'Phone Usage', subtitle: 'Log and track screen time' },
+  { key: 'trips', icon: '✈️', title: 'Trips', subtitle: 'Dates, cost, and type per trip' },
 ];
 
 export default function DashboardScreen({ onSelectFeature, onOpenTrackers }) {
