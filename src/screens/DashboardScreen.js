@@ -1,13 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTrackers } from '../context/TrackerContext';
 
 const FEATURES = [
   { key: 'todos', icon: '✅', title: 'To-Do List', subtitle: 'Daily tasks, habits & one-offs' },
   { key: 'phoneUsage', icon: '📱', title: 'Phone Usage', subtitle: 'Log and track screen time' },
 ];
 
-export default function DashboardScreen({ onSelect }) {
+export default function DashboardScreen({ onSelectFeature, onOpenTrackers }) {
+  const { trackers } = useTrackers();
+  const activeCount = trackers.filter((t) => !t.archived).length;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -16,7 +20,7 @@ export default function DashboardScreen({ onSelect }) {
 
       <View style={styles.cards}>
         {FEATURES.map((f) => (
-          <TouchableOpacity key={f.key} style={styles.card} onPress={() => onSelect(f.key)}>
+          <TouchableOpacity key={f.key} style={styles.card} onPress={() => onSelectFeature(f.key)}>
             <Text style={styles.cardIcon}>{f.icon}</Text>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>{f.title}</Text>
@@ -25,6 +29,17 @@ export default function DashboardScreen({ onSelect }) {
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         ))}
+
+        <TouchableOpacity style={styles.card} onPress={onOpenTrackers}>
+          <Text style={styles.cardIcon}>🗂</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Custom Trackers</Text>
+            <Text style={styles.cardSubtitle}>
+              {activeCount === 0 ? 'Books, habits, anything you define' : `${activeCount} tracker${activeCount === 1 ? '' : 's'}`}
+            </Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
