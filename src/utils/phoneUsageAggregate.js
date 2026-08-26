@@ -25,7 +25,7 @@ export function weeklySummaries(entries, categories) {
   });
 
   return Object.entries(groups)
-    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([wk, weekEntries]) => {
       const totalMinutes = weekEntries.reduce((sum, e) => sum + e.minutes, 0);
       const byCategoryMap = {};

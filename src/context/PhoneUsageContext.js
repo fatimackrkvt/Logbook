@@ -121,6 +121,10 @@ export function PhoneUsageProvider({ children }) {
     setEntries((prev) => [...prev, entry]);
   }, []);
 
+  const updateEntry = useCallback((id, patch) => {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  }, []);
+
   const deleteEntry = useCallback((id) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }, []);
@@ -138,6 +142,7 @@ export function PhoneUsageProvider({ children }) {
         archiveSubcategory,
         unarchiveSubcategory,
         addEntry,
+        updateEntry,
         deleteEntry,
       }}
     >

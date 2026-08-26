@@ -5,11 +5,13 @@ import { usePhoneUsage } from '../context/PhoneUsageContext';
 import { weeklySummaries, formatDuration } from '../utils/phoneUsageAggregate';
 import AddUsageEntryModal from '../components/AddUsageEntryModal';
 import ManageCategoriesModal from '../components/ManageCategoriesModal';
+import PhoneUsageStatsModal from './PhoneUsageStatsModal';
 
 export default function PhoneUsageScreen({ onBack }) {
   const { categories, entries, loaded, deleteEntry } = usePhoneUsage();
   const [addVisible, setAddVisible] = useState(false);
   const [manageVisible, setManageVisible] = useState(false);
+  const [statsVisible, setStatsVisible] = useState(false);
   const [expandedWeek, setExpandedWeek] = useState(null);
 
   const subcategoryName = (categoryId, subId) => {
@@ -41,6 +43,9 @@ export default function PhoneUsageScreen({ onBack }) {
       </View>
 
       <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => setStatsVisible(true)}>
+          <Text style={styles.actionBtnText}>📊 Stats</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={() => setManageVisible(true)}>
           <Text style={styles.actionBtnText}>Categories</Text>
         </TouchableOpacity>
@@ -125,6 +130,7 @@ export default function PhoneUsageScreen({ onBack }) {
         }}
       />
       <ManageCategoriesModal visible={manageVisible} onClose={() => setManageVisible(false)} />
+      <PhoneUsageStatsModal visible={statsVisible} onClose={() => setStatsVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -139,7 +145,7 @@ const styles = StyleSheet.create({
   header: { marginTop: 24, marginBottom: 4 },
   backLink: { color: '#818CF8', fontSize: 14, fontWeight: '600', marginBottom: 8 },
   heading: { color: '#fff', fontSize: 26, fontWeight: '800' },
-  actionsRow: { flexDirection: 'row', marginTop: 10, marginBottom: 6 },
+  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 6 },
   actionBtn: { backgroundColor: '#1F2937', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
   actionBtnText: { color: '#818CF8', fontWeight: '600', fontSize: 13 },
   empty: { color: '#9CA3AF', textAlign: 'center', marginTop: 60, fontSize: 14 },

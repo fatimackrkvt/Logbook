@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { usePhoneUsage } from '../context/PhoneUsageContext';
 import { todayStr, weekStart } from '../utils/recurrence';
+import { formatDuration } from '../utils/phoneUsageAggregate';
 
 export default function AddUsageEntryModal({ visible, onClose, onManageCategories }) {
-  const { categories, getOrCreateCategory, getOrCreateSubcategory, addEntry } = usePhoneUsage();
+  const { categories, entries, getOrCreateCategory, getOrCreateSubcategory, addEntry, updateEntry } = usePhoneUsage();
 
   const [mode, setMode] = useState('daily'); // 'daily' | 'weekly'
   const [date, setDate] = useState(todayStr());
@@ -72,15 +73,53 @@ export default function AddUsageEntryModal({ visible, onClose, onManageCategorie
 
     if (totalMinutes <= 0) return;
 
-    addEntry({
+    const wk = weekStart(date);
+    const newEntryData = {
       mode,
       date: mode === 'daily' ? date : null,
-      weekStart: mode === 'weekly' ? weekStart(date) : null,
+      weekStart: mode === 'weekly' ? wk : null,
       categoryId,
       breakdown,
       minutes: totalMinutes,
       note,
+    };
+
+    // Look for an existing entry logged against the same category and same
+    // day (daily mode) or same week (weekly mode) — likely a duplicate.
+    const existing = entries.find((e) => {
+      if (e.categoryId !== categoryId || e.mode !== mode) return false;
+      return mode === 'daily' ? e.date === date : e.weekStart === wk;
     });
+
+    if (existing) {
+      const catName = categories.find((c) => c.id === categoryId)?.name || 'this category';
+      const when = mode === 'daily' ? date : `week of ${wk}`;
+      Alert.alert(
+        'Already logged for this period',
+        `You already have an entry for ${catName} on ${when} (${formatDuration(existing.minutes)}). What do you want to do?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Add as separate entry',
+            onPress: () => {
+              addEntry(newEntryData);
+              onClose();
+            },
+          },
+          {
+            text: 'Update existing',
+            style: 'default',
+            onPress: () => {
+              updateEntry(existing.id, { breakdown, minutes: totalMinutes, note });
+              onClose();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    addEntry(newEntryData);
     onClose();
   }
 
