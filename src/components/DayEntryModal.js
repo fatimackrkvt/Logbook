@@ -7,14 +7,16 @@ const STATUS_META = {
   skipped: { symbol: '–', color: '#9CA3AF', label: 'Skipped' },
 };
 
-export default function DayEntryModal({ visible, date, initialStatus, initialNote, onSave, onClear, onCancel }) {
+export default function DayEntryModal({ visible, date, initialStatus, initialNote, initialDuration, onSave, onClear, onCancel }) {
   const [status, setStatus] = useState(initialStatus || null);
   const [note, setNote] = useState(initialNote || '');
+  const [duration, setDuration] = useState(initialDuration ? String(initialDuration) : '');
 
   useEffect(() => {
     setStatus(initialStatus || null);
     setNote(initialNote || '');
-  }, [date, initialStatus, initialNote, visible]);
+    setDuration(initialDuration ? String(initialDuration) : '');
+  }, [date, initialStatus, initialNote, initialDuration, visible]);
 
   return (
     <Modal visible={visible} animationType="fade" transparent>
@@ -49,6 +51,16 @@ export default function DayEntryModal({ visible, date, initialStatus, initialNot
             multiline
           />
 
+          <Text style={styles.label}>Duration in minutes (optional)</Text>
+          <TextInput
+            style={styles.durationInput}
+            placeholder="e.g. 30"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            value={duration}
+            onChangeText={setDuration}
+          />
+
           <View style={styles.actions}>
             {initialStatus && (
               <TouchableOpacity style={styles.clearBtn} onPress={onClear}>
@@ -61,7 +73,7 @@ export default function DayEntryModal({ visible, date, initialStatus, initialNot
             <TouchableOpacity
               style={[styles.saveBtn, !status && { opacity: 0.4 }]}
               disabled={!status}
-              onPress={() => onSave(status, note)}
+              onPress={() => onSave(status, note, parseInt(duration, 10) || 0)}
             >
               <Text style={styles.saveText}>Save</Text>
             </TouchableOpacity>
@@ -88,6 +100,8 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, gap: 10, flexWrap: 'wrap' },
+  label: { color: '#9CA3AF', fontSize: 12, marginTop: 12, marginBottom: 6 },
+  durationInput: { backgroundColor: '#374151', color: '#fff', borderRadius: 10, padding: 10, fontSize: 14, width: 100 },
   clearBtn: { paddingVertical: 10, paddingHorizontal: 12, marginRight: 'auto' },
   clearText: { color: '#EF4444', fontSize: 14 },
   cancelBtn: { paddingVertical: 10, paddingHorizontal: 14 },

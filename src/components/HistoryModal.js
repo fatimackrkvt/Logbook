@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { useTodos } from '../context/TodoContext';
-import { todayStr } from '../utils/recurrence';
+import { todayStr, addDays } from '../utils/recurrence';
+import { formatDuration } from '../utils/phoneUsageAggregate';
 import DayEntryModal from './DayEntryModal';
 
 const STATUS_META = {
@@ -11,13 +12,9 @@ const STATUS_META = {
 };
 
 function pastDates(days) {
+  const today = todayStr();
   const out = [];
-  const base = new Date();
-  for (let i = 1; i <= days; i++) {
-    const d = new Date(base);
-    d.setDate(d.getDate() - i);
-    out.push(d.toISOString().slice(0, 10));
-  }
+  for (let i = 1; i <= days; i++) out.push(addDays(today, -i));
   return out; // yesterday first, going back
 }
 
@@ -29,7 +26,7 @@ export default function HistoryModal({ visible, todo, onClose }) {
   const entries = useMemo(() => {
     if (!todo) return [];
     return Object.entries(todo.completions || {})
-      .map(([date, status]) => ({ date, status, note: todo.notes?.[date] }))
+      .map(([date, status]) => ({ date, status, note: todo.notes?.[date], duration: todo.durations?.[date] }))
       .sort((a, b) => (a.date < b.date ? 1 : -1)); // newest first
   }, [todo]);
 
@@ -43,8 +40,8 @@ export default function HistoryModal({ visible, todo, onClose }) {
 
   const last14Days = pastDates(14);
 
-  function handleSaveDay(status, note) {
-    setCompletion(todo.id, editingDate, status, note);
+  function handleSaveDay(status, note, duration) {
+    setCompletion(todo.id, editingDate, status, note, duration);
     setEditingDate(null);
   }
 
@@ -84,6 +81,7 @@ export default function HistoryModal({ visible, todo, onClose }) {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.date}>{item.date} · {meta.label}</Text>
                       {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
+                      {item.duration ? <Text style={styles.duration}>⏱ {formatDuration(item.duration)}</Text> : null}
                     </View>
                   </TouchableOpacity>
                 );
@@ -136,6 +134,7 @@ export default function HistoryModal({ visible, todo, onClose }) {
         date={editingDate}
         initialStatus={editingDate ? todo.completions[editingDate] : null}
         initialNote={editingDate ? todo.notes?.[editingDate] : ''}
+        initialDuration={editingDate ? todo.durations?.[editingDate] : null}
         onSave={handleSaveDay}
         onClear={handleClearDay}
         onCancel={() => setEditingDate(null)}
@@ -157,6 +156,7 @@ const styles = StyleSheet.create({
   badge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 2 },
   date: { color: '#E5E7EB', fontSize: 13, fontWeight: '600' },
   note: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
+  duration: { color: '#818CF8', fontSize: 12, marginTop: 2, fontWeight: '600' },
   closeBtn: { marginTop: 16, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 24 },
   closeText: { color: '#818CF8', fontWeight: '700', fontSize: 15 },
 });

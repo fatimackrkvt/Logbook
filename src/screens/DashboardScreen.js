@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTrackers } from '../context/TrackerContext';
+import BackupModal from '../components/BackupModal';
 
 const FEATURES = [
-  { key: 'todos', icon: '✅', title: 'To-Do List', subtitle: 'Daily tasks, habits & one-offs' },
+  { key: 'todos', icon: '✅', title: 'To-Do List', subtitle: 'One-time tasks with due dates' },
+  { key: 'habits', icon: '🔁', title: 'Habits', subtitle: 'Daily, weekly & frequency-based routines' },
   { key: 'phoneUsage', icon: '📱', title: 'Phone Usage', subtitle: 'Log and track screen time' },
   { key: 'trips', icon: '✈️', title: 'Trips', subtitle: 'Dates, cost, and type per trip' },
 ];
 
-export default function DashboardScreen({ onSelectFeature, onOpenTrackers }) {
+export default function DashboardScreen({ onSelectFeature, onOpenTrackers, onImported }) {
   const { trackers } = useTrackers();
+  const [backupVisible, setBackupVisible] = useState(false);
   const activeCount = trackers.filter((t) => !t.archived).length;
 
   return (
@@ -42,6 +45,16 @@ export default function DashboardScreen({ onSelectFeature, onOpenTrackers }) {
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity onPress={() => setBackupVisible(true)}>
+        <Text style={styles.backupLink}>🔒 Backup & Restore</Text>
+      </TouchableOpacity>
+
+      <BackupModal
+        visible={backupVisible}
+        onClose={() => setBackupVisible(false)}
+        onImported={onImported}
+      />
     </SafeAreaView>
   );
 }
@@ -68,4 +81,5 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
   cardSubtitle: { color: '#9CA3AF', fontSize: 12, marginTop: 2 },
   chevron: { color: '#6B7280', fontSize: 22 },
+  backupLink: { color: '#6B7280', fontSize: 13, textAlign: 'center', marginTop: 24, textDecorationLine: 'underline' },
 });

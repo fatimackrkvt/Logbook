@@ -9,6 +9,7 @@ export function dailyEntries(todos, dateStr) {
       todo: t,
       status: t.completions[dateStr] || null,
       note: t.notes?.[dateStr],
+      duration: t.durations?.[dateStr],
     }));
 }
 

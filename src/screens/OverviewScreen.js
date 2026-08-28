@@ -10,6 +10,7 @@ import {
   monthStart,
 } from '../utils/recurrence';
 import { dailyEntries, summariesForDates, byCategory } from '../utils/aggregate';
+import { formatDuration } from '../utils/phoneUsageAggregate';
 import DayEntryModal from '../components/DayEntryModal';
 
 const STATUS_META = {
@@ -21,7 +22,8 @@ const STATUS_META = {
 const TABS = ['day', 'week', 'month'];
 
 export default function OverviewScreen({ visible, onClose }) {
-  const { todos, setCompletion } = useTodos();
+  const { todos: allTodos, setCompletion } = useTodos();
+  const todos = useMemo(() => allTodos.filter((t) => t.type !== 'once'), [allTodos]);
   const [tab, setTab] = useState('day');
   const [anchorDate, setAnchorDate] = useState(todayStr());
   const [editing, setEditing] = useState(null); // { todoId, date } or null
@@ -94,8 +96,9 @@ export default function OverviewScreen({ visible, onClose }) {
         date={editing?.date}
         initialStatus={editingTodo && editing ? editingTodo.completions[editing.date] : null}
         initialNote={editingTodo && editing ? editingTodo.notes?.[editing.date] : ''}
-        onSave={(status, note) => {
-          setCompletion(editing.todoId, editing.date, status, note);
+        initialDuration={editingTodo && editing ? editingTodo.durations?.[editing.date] : null}
+        onSave={(status, note, duration) => {
+          setCompletion(editing.todoId, editing.date, status, note, duration);
           setEditing(null);
         }}
         onClear={() => {
@@ -132,6 +135,7 @@ function DayTab({ date, todos, onPrev, onNext, onToday, onEdit }) {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.entryTitle}>{e.todo.title}</Text>
                     {e.note ? <Text style={styles.entryNote}>{e.note}</Text> : null}
+                    {e.duration ? <Text style={styles.entryDuration}>⏱ {formatDuration(e.duration)}</Text> : null}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -178,6 +182,7 @@ function DayAccordion({ date, todos, expanded, onToggle, onEdit }) {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.entryTitle}>{e.todo.title}</Text>
                       {e.note ? <Text style={styles.entryNote}>{e.note}</Text> : null}
+                      {e.duration ? <Text style={styles.entryDuration}>⏱ {formatDuration(e.duration)}</Text> : null}
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -329,6 +334,7 @@ const styles = StyleSheet.create({
   badge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 1 },
   entryTitle: { color: '#E5E7EB', fontSize: 14, fontWeight: '600' },
   entryNote: { color: '#9CA3AF', fontSize: 12, marginTop: 2 },
+  entryDuration: { color: '#818CF8', fontSize: 12, marginTop: 2, fontWeight: '600' },
   weekCounts: { flexDirection: 'row', gap: 8 },
   countText: { fontSize: 12, fontWeight: '700' },
   accordionItem: { marginBottom: 6 },
